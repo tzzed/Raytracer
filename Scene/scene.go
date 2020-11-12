@@ -1,11 +1,14 @@
-package main
+package Scene
 
 import (
+	"Raytracer/Shapes"
 	"fmt"
+	"github.com/veandco/go-sdl2/sdl"
 	"math"
 	"math/rand"
 	"sync"
 	"time"
+	"unsafe"
 )
 
 // Pixels represents the array of pixels (in packed RGB value) to Render and/or save
@@ -17,17 +20,20 @@ type Pixels []uint32
 type Scene struct {
 	width, height int
 	raysPerPixel  []int
-	camera        Camera
-	world         HitTable
+	Camera        Camera
+	world         Shapes.HitTable
 }
 
+func NewScene(w, h int, rpp []int, c Camera, world Shapes.HitTable) *Scene{
+	return &Scene{width: w, height: h, raysPerPixel: rpp, Camera: c, world: world}
+}
 // pixel is an internal type which represents the pixel to be processed
 //	x,y are the coordinates
 //	k is the index in the Pixels array
 //	color is the color that has been computed by casting raysPerPixel through x/y coordinates (not normalized to avoid accumulating rounding errors)
 type pixel struct {
 	x, y, k      int
-	color        Color
+	color        Shapes.Color
 	raysPerPixel int
 }
 
@@ -48,13 +54,13 @@ func split(buf []*pixel, count int) [][]*pixel {
 // render works on a single pixels, casting raysPerPixel through it and accumulating the color
 //	returns the normalized and gamma corrected value so far (for immediate display) while
 //	updating the pixel for further ray casting
-func (scene *Scene) render(rnd Rnd, pixel *pixel, raysPerPixel int) uint32 {
+func (scene *Scene) render(rnd Shapes.Rnd, pixel *pixel, raysPerPixel int) uint32 {
 	c := pixel.color
 	
 	for s := 0; s < raysPerPixel; s++ {
 		u := (float64(pixel.x) + rnd.Float64()) / float64(scene.width)
 		v := (float64(pixel.y) + rnd.Float64()) / float64(scene.height)
-		r := scene.camera.ray(rnd, u, v)
+		r := scene.Camera.ray(rnd, u, v)
 		c = c.Add(color(r, scene.world, 0))
 	}
 	
@@ -65,7 +71,7 @@ func (scene *Scene) render(rnd Rnd, pixel *pixel, raysPerPixel int) uint32 {
 	c = c.Scale(1.0 / float64(pixel.raysPerPixel))
 	
 	// gamma correction
-	c = Color{R: math.Sqrt(c.R), G: math.Sqrt(c.G), B: math.Sqrt(c.B)}
+	c = Shapes.Color{R: math.Sqrt(c.R), G: math.Sqrt(c.G), B: math.Sqrt(c.B)}
 	
 	return c.PixelValue()
 }
@@ -73,7 +79,7 @@ func (scene *Scene) render(rnd Rnd, pixel *pixel, raysPerPixel int) uint32 {
 // Render is the main method of a scene. It is non blocking and returns right away with the array of pixels
 // that will be computed asynchronously and a channel to indicate when the processing is complete. Note that
 // no synchronization is required on the array of pixels since it is an array of 32 bits values.
-// The image (width x height) will be split in lines each one processed in a separate goroutine (parallelCount
+// The image (Width x Height) will be split in lines each one processed in a separate goroutine (parallelCount
 // of them). The image will be progressively rendered using the passes defined in raysPerPixel
 func (scene *Scene) Render(parallelCount int) (Pixels, chan struct{}) {
 	pixels := make([]uint32, scene.width*scene.height)
@@ -175,20 +181,42 @@ func (scene *Scene) Render(parallelCount int) (Pixels, chan struct{}) {
 
 // color computes the color of the ray by checking which hitable gets hit and scattering
 // more rays (recursive) depending on material
-func color(r *Ray, w HitTable, depth int) Color {
+func color(r *Shapes.Ray, w Shapes.HitTable, depth int) Shapes.Color {
 	if depth >= 50 {
-		return Color{}
+		return Shapes.Color{}
 	}
 	
-	if hit, hr := w.hit(r, 0.001, math.MaxFloat64); hit {
-		if wasScattered, attenuation, scattered := hr.mat.scatter(r, hr); wasScattered {
+	if hit, hr := w.Hit(r, 0.001, math.MaxFloat64); hit {
+		if wasScattered, attenuation, scattered := hr.Mat.Scatter(r, hr); wasScattered {
 			return attenuation.Mult(color(scattered, w, depth+1))
 		}
 		
-		return Color{}
+		return Shapes.Color{}
 	}
 	
+	// Normalized vector
 	ud := r.Dir.Unit()
 	t := 0.5 * (ud.Y + 1.0)
-	return Color{1.0, 1.0, 1.0}.Scale(1.0 - t).Add(Color{0.5, 0.7, 1.0}.Scale(t))
+	return Shapes.Color{R: 1.0, G: 1.0, B: 1.0}.Scale(1.0 - t).Add(Shapes.Color{R: 0.5, G: 0.7, B: 1.0}.Scale(t))
+}
+
+// display will update the screen with the pixels provided
+// note that there is no synchronization required on the array of pixels since it is an array of 32 bits integers
+// that only gets updated to a final value by 1 goroutine at a time
+func (scene *Scene) Display(window *sdl.Window, screen *sdl.Surface, pixels Pixels) error {
+	// create an img from the pixels generated
+	img, err := sdl.CreateRGBSurfaceFrom(unsafe.Pointer(&pixels[0]), int32(scene.width), int32(scene.height), 32, scene.width*int(unsafe.Sizeof(pixels[0])), 0, 0, 0, 0)
+	if err != nil {
+		return err
+	}
+	defer img.Free()
+	// copy it into the screen
+	
+	if err = img.Blit(nil, screen, nil); err != nil {
+		return err
+	}
+	
+	// update the surface to show it
+	return window.UpdateSurface()
+	
 }

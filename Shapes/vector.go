@@ -1,4 +1,4 @@
-package main
+package Shapes
 
 import (
 	"math"
@@ -8,9 +8,6 @@ type Rnd interface {
 	Float64() float64
 }
 
-/***********************
- * Vec3
- ************************/
 // Vec3 defines a vector in 3D space
 type Vec3 struct {
 	X, Y, Z float64
@@ -45,7 +42,7 @@ func (v Vec3) squared() float64 {
 	return v.X*v.X + v.Y*v.Y + v.Z*v.Z
 }
 
-// Unit returns a new vector with same direction and length 1
+// Unit returns Normalized vectors
 func (v Vec3) Unit() Vec3 {
 	return v.Scale(1.0 / v.Length())
 }
@@ -65,7 +62,7 @@ func Cross(v1 Vec3, v2 Vec3) Vec3 {
 	return Vec3{v1.Y*v2.Z - v1.Z*v2.Y, -(v1.X*v2.Z - v1.Z*v2.X), v1.X*v2.Y - v1.Y*v2.X}
 }
 
-// Reflect simply reflects the vector based on the normal n
+// Reflect simply reflects the vector based on the Normal n
 func (v Vec3) Reflect(n Vec3) Vec3 {
 	return v.Sub(n.Scale(2.0 * DotProduct(v, n)))
 }
@@ -86,10 +83,7 @@ func (v Vec3) Refract(n Vec3, niOverNt float64) (bool, Vec3) {
 	
 }
 
-/***********************
- * Point3
- ************************/
-// Point3 defines a point in 3D space
+// Point3  3D point
 type Point3 struct {
 	X, Y, Z float64
 }
@@ -109,24 +103,19 @@ func (p Point3) Vec3() Vec3 {
 	return Vec3{p.X, p.Y, p.Z}
 }
 
-/***********************
- * Ray
- ************************/
 // Ray represents a ray defined by its origin and direction
 type Ray struct {
 	Origin Point3
 	Dir    Vec3
-	rnd    Rnd
+	Rnd    Rnd
 }
 
-// PointAt returns a new point along the ray (0 will return the origin)
+// PointAt returns a new point along the ray.
+// P(t) = o + dt
 func (r *Ray) PointAt(t float64) Point3 {
 	return r.Origin.Translate(r.Dir.Scale(t))
 }
 
-/***********************
- * Color
- ************************/
 // Color defines the basic Red/Green/Blue as raw float64 values
 type Color struct {
 	R, G, B float64
@@ -156,48 +145,43 @@ func (c Color) PixelValue() uint32 {
 	return ((r & 0xFF) << 16) | ((g & 0xFF) << 8) | (b & 0xFF)
 }
 
-/***********************
- * Hitable
- ************************/
+// HitRecord
 type HitRecord struct {
-	t      float64  // which t generated the hit
-	p      Point3   // which point when hit
-	normal Vec3     // normal at that point
-	mat    Material // the material associated to this record
+	T      float64  // which T generated the hit
+	P      Point3   // which point when hit
+	Normal Vec3     // Normal at that point
+	Mat    Material // the material associated to this record
 }
 
-// Hitable defines the interface of objects that can be hit by a ray
+// HitTable interface of objects that can be hit by a ray
 type HitTable interface {
-	hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord)
+	Hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord)
 }
 
 // HitTableList defines a simple list of hitable
 type HitTableList []HitTable
 
-// hit defines the method for a list of hitables: will return the one closest
-func (hl HitTableList) hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord) {
+// Hit returns the one closest
+func (hl HitTableList) Hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord) {
 	var res *HitRecord
 	hitAnything := false
 	
 	closestSoFar := tMax
 	
 	for i := range hl {
-		if hit, hr := hl[i].hit(r, tMin, closestSoFar); hit {
+		if hit, hr := hl[i].Hit(r, tMin, closestSoFar); hit {
 			hitAnything = true
 			res = hr
-			closestSoFar = hr.t
+			closestSoFar = hr.T
 		}
 	}
 	
 	return hitAnything, res
 }
 
-/***********************
- * Utilities functions
- ************************/
-func randomInUnitSphere(rnd Rnd) Vec3 {
+func RandomInUnitSphere(rnd Rnd) Vec3 {
 	for {
-		p := Vec3{2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0}
+		p := Vec3{X: 2.0*rnd.Float64() - 1.0, Y: 2.0*rnd.Float64() - 1.0, Z: 2.0*rnd.Float64() - 1.0}
 		// squared of p
 		p2 := p.X*p.X + p.Y*p.Y + p.Z*p.Z
 		if p2 < 1.0 {
@@ -206,9 +190,9 @@ func randomInUnitSphere(rnd Rnd) Vec3 {
 	}
 }
 
-func randomInUnitDisk(rnd Rnd) Vec3 {
+func RandomInUnitDisk(rnd Rnd) Vec3 {
 	for {
-		p := Vec3{2.0*rnd.Float64() - 1.0, 2.0*rnd.Float64() - 1.0, 0}
+		p := Vec3{X: 2.0*rnd.Float64() - 1.0, Y: 2.0*rnd.Float64() - 1.0}
 		p2 := p.X*p.X + p.Y*p.Y + p.Z*p.Z
 		if p2 < 1.0 {
 			return p
