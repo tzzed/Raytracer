@@ -3,6 +3,8 @@ package Scene
 import (
 	"Raytracer/Shapes"
 	"math"
+	"math/rand"
+	"time"
 )
 
 type Camera struct {
@@ -12,6 +14,7 @@ type Camera struct {
 	vertical   Shapes.Vec3
 	u, v       Shapes.Vec3
 	lensRadius float64
+	rnd Shapes.Rnd
 }
 
 // NewCamera computes the parameters necessary for the Camera...
@@ -31,7 +34,7 @@ func NewCamera(lookFrom Shapes.Point3, lookAt Shapes.Point3, vup Shapes.Vec3, vf
 	horizontal := u.Scale(2 * halfWidth * focusDist)
 	vertical := v.Scale(2 * halfHeight * focusDist)
 	
-	return Camera{origin, lowerLeftCorner, horizontal, vertical, u, v, aperture / 2.0}
+	return Camera{origin, lowerLeftCorner, horizontal, vertical, u, v, aperture / 2.0, rand.New(rand.NewSource(time.Now().UnixNano()))}
 }
 
 func (c Camera) ray(rnd Shapes.Rnd, u, v float64) *Shapes.Ray {
