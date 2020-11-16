@@ -1,6 +1,6 @@
 # Motivation
-
-The Ray-Tracer was a very fascinating student project. I decided to write it in Go.
+The Ray Tracer was a very fascinating school project in C language. 
+I decided to write it in Go.
 
 # Resources
 
