@@ -1,7 +1,7 @@
 package main
 
 import (
-	"Raytracer/Scene"
+	"Raytracer/scene"
 	"flag"
 	"fmt"
 	"image"
@@ -47,7 +47,7 @@ type Options struct {
 }
 
 // saveImage saves the image (if requested) to a file in png format
-func saveImage(pixels Scene.Pixels, options Options) error {
+func saveImage(pixels scene.Pixels, options Options) error {
 	if options.Output == "" {
 		return nil
 	}
@@ -131,9 +131,9 @@ func main() {
 	}
 	
 	// Camera & World
-	c, w := Scene.NewBuilder(options.Width, options.Height, options.Scene)
+	c, w := scene.NewBuilder(options.Width, options.Height, options.Scene)
 	
-	scene := Scene.NewScene(options.Width, options.Height, options.RaysPerPixel, c, w)
+	scene := scene.NewScene(options.Width, options.Height, options.RaysPerPixel, c, w)
 	pixels, completed := scene.Render(options.CPU)
 	
 	// update the surface to show it
