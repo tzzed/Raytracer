@@ -1,7 +1,7 @@
-package Scene
+package scene
 
 import (
-	"Raytracer/Shapes"
+	"Raytracer/shapes"
 	"fmt"
 	"github.com/veandco/go-sdl2/sdl"
 	"math"
@@ -15,16 +15,16 @@ import (
 type Pixels []uint32
 
 // Scene represents the scene to Render.
-//   raysPerPixel is an array because the Render algorithm is split in multiple passes so that a result can be
-//                available as soon as possible
+// raysPerPixel is an array because the Render algorithm is split in multiple passes so that a result can be
+// available as soon as possible
 type Scene struct {
 	width, height int
 	raysPerPixel  []int
 	Camera        Camera
-	world         Shapes.HitTable
+	world         shapes.HitTable
 }
 
-func NewScene(w, h int, rpp []int, c Camera, world Shapes.HitTable) *Scene{
+func NewScene(w, h int, rpp []int, c Camera, world shapes.HitTable) *Scene{
 	return &Scene{width: w, height: h, raysPerPixel: rpp, Camera: c, world: world}
 }
 // pixel is an internal type which represents the pixel to be processed
@@ -33,7 +33,7 @@ func NewScene(w, h int, rpp []int, c Camera, world Shapes.HitTable) *Scene{
 //	color is the color that has been computed by casting raysPerPixel through x/y coordinates (not normalized to avoid accumulating rounding errors)
 type pixel struct {
 	x, y, k      int
-	color        Shapes.Color
+	color        shapes.Color
 	raysPerPixel int
 }
 
@@ -54,7 +54,7 @@ func split(buf []*pixel, count int) [][]*pixel {
 // render works on a single pixels, casting raysPerPixel through it and accumulating the color
 //	returns the normalized and gamma corrected value so far (for immediate display) while
 //	updating the pixel for further ray casting
-func (scene *Scene) render(rnd Shapes.Rnd, pixel *pixel, raysPerPixel int) uint32 {
+func (scene *Scene) render(rnd shapes.Rnd, pixel *pixel, raysPerPixel int) uint32 {
 	c := pixel.color
 	
 	for s := 0; s < raysPerPixel; s++ {
@@ -71,7 +71,7 @@ func (scene *Scene) render(rnd Shapes.Rnd, pixel *pixel, raysPerPixel int) uint3
 	c = c.Scale(1.0 / float64(pixel.raysPerPixel))
 	
 	// gamma correction
-	c = Shapes.Color{R: math.Sqrt(c.R), G: math.Sqrt(c.G), B: math.Sqrt(c.B)}
+	c = shapes.Color{R: math.Sqrt(c.R), G: math.Sqrt(c.G), B: math.Sqrt(c.B)}
 	
 	return c.PixelValue()
 }
@@ -181,9 +181,9 @@ func (scene *Scene) Render(parallelCount int) (Pixels, chan struct{}) {
 
 // color computes the color of the ray by checking which hitable gets hit and scattering
 // more rays (recursive) depending on material
-func color(r *Shapes.Ray, w Shapes.HitTable, depth int) Shapes.Color {
+func color(r *shapes.Ray, w shapes.HitTable, depth int) shapes.Color {
 	if depth >= 50 {
-		return Shapes.Color{}
+		return shapes.Color{}
 	}
 	
 	if hit, hr := w.Hit(r, 0.001, math.MaxFloat64); hit {
@@ -191,13 +191,13 @@ func color(r *Shapes.Ray, w Shapes.HitTable, depth int) Shapes.Color {
 			return attenuation.Mult(color(scattered, w, depth+1))
 		}
 		
-		return Shapes.Color{}
+		return shapes.Color{}
 	}
 	
 	// Normalized vector
 	ud := r.Dir.Unit()
 	t := 0.5 * (ud.Y + 1.0)
-	return Shapes.Color{R: 1.0, G: 1.0, B: 1.0}.Scale(1.0 - t).Add(Shapes.Color{R: 0.5, G: 0.7, B: 1.0}.Scale(t))
+	return shapes.Color{R: 1.0, G: 1.0, B: 1.0}.Scale(1.0 - t).Add(shapes.Color{R: 0.5, G: 0.7, B: 1.0}.Scale(t))
 }
 
 // display will update the screen with the pixels provided
