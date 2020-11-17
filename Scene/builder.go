@@ -25,8 +25,9 @@ func NewBuilder(width, height, s int) (Camera, shapes.HitTable) {
 		_, _ = fmt.Fprintln(os.Stdout, "Final scene")
 		return buildWorldFinalScene(width, height)
 	case 6:
-		_, _ = fmt.Fprintln(os.Stdout, "Final scene")
-		return buildMovingWorldFinalScene(width, height)
+		_, _ = fmt.Fprintln(os.Stdout, "Reversed sphere scene")
+		return buildReflectedSpheres(width, height)
+		
 	default:
 		_, _ = fmt.Fprintln(os.Stdout, "Build scene One")
 		return buildOne(width, height)
@@ -41,14 +42,14 @@ func buildWorldMetalSpheres(width, height int) (Camera, shapes.HitTableList) {
 	distToFocus := 1.0
 	camera := NewCamera(lookFrom, lookAt, shapes.Vec3{Y: 1.0}, 20, float64(width)/float64(height), aperture, distToFocus)
 	
-	world := shapes.HitTableList{
-		shapes.Sphere{Center: shapes.Point3{Z: -1.0}, R: 0.5, Material: shapes.Lambertian{Albedo: shapes.Color{R: 0.8, G: 0.3, B: 0.3}}},
-		shapes.Sphere{Center: shapes.Point3{Y: -100.5, Z: -1.0}, R: 100, Material: shapes.Lambertian{Albedo: shapes.Color{R: 0.8, G: 0.8}}},
+	world := []shapes.HitTable{
+		shapes.Sphere{Center: shapes.Point3{Z: -1.0}, R: 0.5, Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: 0.8, G: 0.3, B: 0.3})}},
+		shapes.Sphere{Center: shapes.Point3{Y: -100.5, Z: -1.0}, R: 100, Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: 0.8, G: 0.8})}},
 		shapes.Sphere{Center: shapes.Point3{X: 1.0, Y: 0, Z: -1.0}, R: 0.5, Material: shapes.Metal{Albedo: shapes.Color{R: 0.8, G: 0.6, B: 0.2}, Fuzz: 1.0}},
 		shapes.Sphere{Center: shapes.Point3{X: -1.0, Y: 0, Z: -1.0}, R: 0.5, Material: shapes.Metal{Albedo: shapes.Color{R: 0.8, G: 0.8, B: 0.8}, Fuzz: 0.3}},
 	}
 	
-	return camera, world
+	return camera, shapes.HitTableList{Hits: world}
 }
 
 func buildOne(width, height int) (Camera, shapes.HitTableList) {
@@ -61,20 +62,20 @@ func buildOne(width, height int) (Camera, shapes.HitTableList) {
 	y := rand.Float64() - 0.5
 	z := rand.Float64()
 	fmt.Fprintf(os.Stderr, "y: %.2f, z: %.2f\n", y, z)
-	world := shapes.HitTableList{
-		shapes.Sphere{Center: shapes.Point3{X: -1, Y: -0.5, Z: -4.6}, R: 0.5, Material: shapes.Lambertian{Albedo: shapes.Color{R: 0.1, G: 0.2, B: 0.5}}},
-		shapes.Sphere{Center: shapes.Point3{Y: -100.5, Z: -1.0}, R: 100, Material: shapes.Lambertian{Albedo: shapes.Color{R: 0.5, G: 0.5, B: 0.5}}},
+	world := []shapes.HitTable{
+		shapes.Sphere{Center: shapes.Point3{X: -1, Y: -0.5, Z: -4.6}, R: 0.5, Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: 0.1, G: 0.2, B: 0.5})}},
+		shapes.Sphere{Center: shapes.Point3{Y: -100.5, Z: -1.0}, R: 100, Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: 0.5, G: 0.5, B: 0.5})}},
 		
 		shapes.MovingSphere{
 		Center0:  c,
 		Center1:  c.Translate(shapes.Vec3{Y: y}.Scale(-0.5)),
 		R:        0.1,
 		Tm1:      1.0,
-		Material: shapes.Lambertian{Albedo: shapes.Color{R: rand.Float64() * rand.Float64(), G: rand.Float64() * rand.Float64(), B: rand.Float64() * rand.Float64()}},
+		Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: rand.Float64() * rand.Float64(), G: rand.Float64() * rand.Float64(), B: rand.Float64() * rand.Float64()})},
 		},
 	}
 	
-	return camera, world
+	return camera, shapes.HitTableList{Hits: world}
 }
 
 // buildWorldDielectrics is the end result chapter 10
@@ -85,23 +86,24 @@ func buildWorldDielectrics(width, height int) (Camera, shapes.HitTableList) {
 	distToFocus := 1.0
 	camera := NewCamera(lookFrom, lookAt, shapes.Vec3{Y: 1.0}, 20, float64(width)/float64(height), aperture, distToFocus)
 	
-	world := shapes.HitTableList{
-		shapes.Sphere{Center: shapes.Point3{X: -0.5, Y: 0.5, Z: -1.0}, R: 0.5, Material: shapes.Lambertian{Albedo: shapes.Color{R: 0.1, G: 0.2, B: 0.5}}},
-		shapes.Sphere{Center: shapes.Point3{Y: -100.5, Z: -1.0}, R: 100, Material: shapes.Lambertian{Albedo: shapes.Color{R: 0.5, G: 0.5, B: 0.5}}},
+	world := []shapes.HitTable{
+		shapes.Sphere{Center: shapes.Point3{X: -0.5, Y: 0.5, Z: -1.0}, R: 0.5, Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: 0.1, G: 0.2, B: 0.5})}},
+		shapes.Sphere{Center: shapes.Point3{Y: -100.5, Z: -1.0}, R: 100, Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: 0.5, G: 0.5, B: 0.5})}},
 		shapes.Sphere{Center: shapes.Point3{X: 1.0, Y: 0, Z: -1.0}, R: 0.5, Material: shapes.Metal{Albedo: shapes.Color{R: 0.8, G: 0.6, B: 0.2}, Fuzz: 1.0}},
 		/*Sphere{Center: Point3{X: -1.0, Y: 0, Z: -1.0}, R: 0.5, Material: Dielectric{1.5}},
 		Sphere{Center: Point3{X: -1.0, Y: 0, Z: -1.0}, R: -0.45, Material: Dielectric{1.5}},*/
 	}
 	
-	return camera, world
+	return camera, shapes.HitTableList{Hits: world}
 }
 
 // buildWorldDielectrics is the end result book
 func buildWorldFinalScene(width, height int) (Camera, shapes.HitTableList) {
-	var world shapes.HitTableList
+	var world []shapes.HitTable
 	
 	maxSpheres := 500
-	world = append(world, shapes.Sphere{Center: shapes.Point3{Y: -1000.0}, R: 1000, Material: shapes.Lambertian{Albedo: shapes.Color{R: 0.5, G: 0.5, B: 0.5}}})
+	checker := shapes.CheckerTexture{Odd: shapes.NewSolidColor(shapes.Color{R: 0.2, G: 0.3, B: 0.1}), Even: shapes.NewSolidColor(shapes.Color{0.9, 0.9,0.9})}
+	world = append(world, shapes.Sphere{Center: shapes.Point3{Y: -1000.0}, R: 1000, Material: shapes.Lambertian{Albedo: checker}})
 	
 	for a := -11; a < 11 && len(world) < maxSpheres; a++ {
 		for b := -11; b < 11 && len(world) < maxSpheres; b++ {
@@ -114,7 +116,7 @@ func buildWorldFinalScene(width, height int) (Camera, shapes.HitTableList) {
 						shapes.Sphere{
 							Center:   Center,
 							R:        0.2,
-							Material: shapes.Lambertian{Albedo: shapes.Color{R: rand.Float64() * rand.Float64(), G: rand.Float64() * rand.Float64(), B: rand.Float64() * rand.Float64()}}})
+							Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: rand.Float64() * rand.Float64(), G: rand.Float64() * rand.Float64(), B: rand.Float64() * rand.Float64()})}})
 				case chooseMaterial < 0.95: // metal
 					world = append(world,
 						shapes.Sphere{
@@ -141,7 +143,7 @@ func buildWorldFinalScene(width, height int) (Camera, shapes.HitTableList) {
 		shapes.Sphere{
 			Center:   shapes.Point3{X: -4, Y: 1},
 			R:        1.0,
-			Material: shapes.Lambertian{Albedo: shapes.Color{R: 0.4, G: 0.2, B: 0.1}}},
+			Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: 0.4, G: 0.2, B: 0.1})}},
 		shapes.Sphere{
 			Center:   shapes.Point3{X: 4, Y: 1},
 			R:        1.0,
@@ -153,7 +155,7 @@ func buildWorldFinalScene(width, height int) (Camera, shapes.HitTableList) {
 	distToFocus := 10.0
 	camera := NewCamera(lookFrom, lookAt, shapes.Vec3{Y: 1.0}, 20, float64(width)/float64(height), aperture, distToFocus)
 	
-	return camera, world
+	return camera, shapes.HitTableList{Hits: world}
 }
 
 // buildWorld with Lambertian
@@ -164,20 +166,20 @@ func buildWorldLambertian(width, height int) (Camera, shapes.HitTableList) {
 	distToFocus := 1.0
 	camera := NewCamera(lookFrom, lookAt, shapes.Vec3{Y: 1.0}, 20, float64(width)/float64(height), aperture, distToFocus)
 	
-	world := shapes.HitTableList{
-		shapes.Sphere{Center: shapes.Point3{Z: -1.0}, R: 0.5, Material: shapes.Lambertian{Albedo: shapes.Color{R: 1.0}}},
-		shapes.Sphere{Center: shapes.Point3{Y: -100.5, Z: -1.0}, R: 100, Material: shapes.Lambertian{Albedo: shapes.Color{G: 1.0}}},
+	world := []shapes.HitTable{
+		shapes.Sphere{Center: shapes.Point3{Z: -1.0}, R: 0.5, Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: 1.0})}},
+		shapes.Sphere{Center: shapes.Point3{Y: -100.5, Z: -1.0}, R: 100, Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{G: 1.0})}},
 	}
 	
-	return camera, world
+	return camera, shapes.HitTableList{Hits: world}
 }
 
 // buildWorldDielectrics is the end result book
 func buildMovingWorldFinalScene(width, height int) (Camera, shapes.HitTableList) {
-	var world shapes.HitTableList
+	var world []shapes.HitTable
 	
 	maxSpheres := 500
-	world = append(world, shapes.Sphere{Center: shapes.Point3{Y: -1000.0}, R: 1000, Material: shapes.Lambertian{Albedo: shapes.Color{R: 0.5, G: 0.5, B: 0.5}}})
+	world = append(world, shapes.Sphere{Center: shapes.Point3{Y: -1000.0}, R: 1000, Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: 0.5, G: 0.5, B: 0.5})}})
 	
 	for a := -11; a < 11 && len(world) < maxSpheres; a++ {
 		for b := -11; b < 11 && len(world) < maxSpheres; b++ {
@@ -198,7 +200,7 @@ func buildMovingWorldFinalScene(width, height int) (Camera, shapes.HitTableList)
 							Center1:  Center.Translate(shapes.Vec3{Y: rand.Float64() - 0.5}),
 							R:        0.2,
 							Tm1:      1.0,
-							Material: shapes.Lambertian{Albedo: shapes.Color{R: rand.Float64() * rand.Float64(), G: rand.Float64() * rand.Float64(), B: rand.Float64() * rand.Float64()}}})
+							Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: rand.Float64() * rand.Float64(), G: rand.Float64() * rand.Float64(), B: rand.Float64() * rand.Float64()})}})
 				
 				case chooseMaterial < 0.95: // metal
 					world = append(world,
@@ -226,7 +228,7 @@ func buildMovingWorldFinalScene(width, height int) (Camera, shapes.HitTableList)
 		shapes.Sphere{
 			Center:   shapes.Point3{X: -4, Y: 1},
 			R:        1.0,
-			Material: shapes.Lambertian{Albedo: shapes.Color{R: 0.4, G: 0.2, B: 0.1}}},
+			Material: shapes.Lambertian{Albedo: shapes.NewSolidColor(shapes.Color{R: 0.4, G: 0.2, B: 0.1})}},
 		shapes.Sphere{
 			Center:   shapes.Point3{X: 4, Y: 1},
 			R:        1.0,
@@ -238,5 +240,22 @@ func buildMovingWorldFinalScene(width, height int) (Camera, shapes.HitTableList)
 	distToFocus := 10.0
 	camera := NewCamera(lookFrom, lookAt, shapes.Vec3{Y: 1.0}, 20, float64(width)/float64(height), aperture, distToFocus)
 	
-	return camera, world
+	return camera, shapes.HitTableList{Hits: world}
+}
+
+func buildReflectedSpheres(width, height int) (Camera, shapes.HitTableList) {
+	lookFrom := shapes.Point3{X:13, Y: 2.0, Z: 3.0}
+	lookAt := shapes.Point3{}
+	aperture := 0.0
+	distToFocus := 1.0
+	camera := NewCamera(lookFrom, lookAt, shapes.Vec3{Y: 1.0}, 20, float64(width)/float64(height), aperture, distToFocus)
+	
+	checker := shapes.CheckerTexture{Odd: shapes.NewSolidColor(shapes.Color{R: 0.2, G: 0.3, B: 0.1}), Even: shapes.NewSolidColor(shapes.Color{R: 0.9, G: 0.9, B: 0.9})}
+
+	world := []shapes.HitTable{
+		shapes.Sphere{Center: shapes.Point3{Y: -10}, R: 10, Material: shapes.Lambertian{Albedo: checker}},
+		shapes.Sphere{Center: shapes.Point3{Y: 10}, R: 10, Material: shapes.Lambertian{Albedo: checker}},
+	}
+	
+	return camera, shapes.HitTableList{Hits: world}
 }

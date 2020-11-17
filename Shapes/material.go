@@ -11,13 +11,14 @@ type Material interface {
 
 // Lambertian Material (diffuse only)
 type Lambertian struct {
-	Albedo Color
+	Albedo Texture
 }
 
 func (l Lambertian) Scatter(r *Ray, rec *HitRecord) (bool, *Color, *Ray) {
 	target := rec.P.Translate(rec.Normal).Translate(RandomInUnitSphere(r.Rnd))
 	scattered := &Ray{Origin: rec.P, Dir: target.Sub(rec.P), Rnd: r.Rnd}
-	return true, &l.Albedo, scattered
+	sc := l.Albedo.Value(rec.U, rec.V, rec.P)
+	return true, &sc, scattered
 	
 }
 

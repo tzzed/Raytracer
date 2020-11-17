@@ -1,7 +1,10 @@
 package shapes
 
 import (
+	"fmt"
 	"math"
+	"os"
+	"sort"
 )
 
 type Rnd interface {
@@ -16,6 +19,23 @@ type Vec3 struct {
 // Scale scales the vector by the value (return a new vector)
 func (v Vec3) Scale(t float64) Vec3 {
 	return Vec3{X: v.X * t, Y: v.Y * t, Z: v.Z * t}
+}
+
+func (v Vec3) GetAxis(a int) float64 {
+	switch a {
+	case 0:
+		return v.X
+	case 1:
+		return v.Y
+	case 2:
+		return v.Z
+	}
+	
+	return 0
+}
+
+func (v Vec3) Less(u Vec3, i int) bool {
+	return v.GetAxis(i) < u.GetAxis(i)
 }
 
 // Mult multiplies the vector by the other one (return a new vector)
@@ -151,15 +171,20 @@ type HitRecord struct {
 	P      Point3   // which point when hit
 	Normal Vec3     // Normal at that point
 	Mat    Material // the material associated to this record
+	U, V   float64  // u, v surface coordinates of the ray hit point
 }
 
 // HitTable interface of objects that can be hit by a ray
 type HitTable interface {
 	Hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord)
+	BoundingBox(tm0, tm1 float64) (bool, *AABB)
 }
 
 // HitTableList defines a simple list of hitable
-type HitTableList []HitTable
+type HitTableList struct {
+	Hits []HitTable
+	less []lessFunc
+}
 
 // Hit returns the one closest
 func (hl HitTableList) Hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord) {
@@ -168,8 +193,8 @@ func (hl HitTableList) Hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord
 	
 	closestSoFar := tMax
 	
-	for i := range hl {
-		if hit, hr := hl[i].Hit(r, tMin, closestSoFar); hit {
+	for i := range hl.Hits {
+		if hit, hr := hl.Hits[i].Hit(r, tMin, closestSoFar); hit {
 			hitAnything = true
 			res = hr
 			closestSoFar = hr.T
@@ -177,6 +202,96 @@ func (hl HitTableList) Hit(r *Ray, tMin float64, tMax float64) (bool, *HitRecord
 	}
 	
 	return hitAnything, res
+}
+
+func (hl HitTableList) BoundingBox(tm0, tm1 float64) (bool, *AABB) {
+	if len(hl.Hits) == 0 {
+		return false, nil
+	}
+	
+	var (
+		fb        = true
+		outputBox = AABB{}
+	)
+	
+	for i := range hl.Hits {
+		isBounding, tmp := hl.Hits[i].BoundingBox(tm0, tm1)
+		if !isBounding {
+			return false, nil
+		}
+		
+		if !fb {
+			outputBox = NewAABB(*tmp, outputBox)
+			continue
+		}
+		
+		fb = false
+		outputBox = *tmp
+	}
+	
+	return false, &outputBox
+}
+
+// Len is part of sort.Interface.
+func (hl *HitTableList) Len() int {
+	return len(hl.Hits)
+}
+
+func (hl HitTableList) Swap(i, j int) {
+	hl.Hits[i], hl.Hits[j] = hl.Hits[j], hl.Hits[i]
+}
+
+type lessFunc func(i, j *HitTable) bool
+
+// OrderedBy returns a Sorter that sorts using the less functions, in order.
+// Call its Sort method to sort the data.
+func OrderedBy(less ...lessFunc) *HitTableList {
+	return &HitTableList{
+		less: less,
+	}
+}
+
+func (hl *HitTableList) BoxCompare(a, b HitTable, axis int) bool {
+	var (
+		boxA = &AABB{}
+		boxB = &AABB{}
+	)
+	
+	isbounding, boxA := a.BoundingBox(0, 0)
+	isboundingB, boxB := b.BoundingBox(0, 0)
+	if !isbounding || isboundingB {
+		_, _ = fmt.Fprintln(os.Stderr, "No bouding box in bhnode Constructor")
+	}
+	
+	return boxA.Min.GetAxis(axis) < boxB.Min.GetAxis(axis)
+}
+
+func (hl *HitTableList) Sort(h []HitTable) {
+	hl.Hits = h
+	sort.Sort(hl)
+}
+
+func (hl *HitTableList) Less(i, j int) bool {
+	p, q := &hl.Hits[i], &hl.Hits[j]
+	// Try all but the last comparison.
+	var k int
+	for k = 0; k < len(hl.less)-1; k++ {
+		less := hl.less[k]
+		switch {
+		case less(p, q):
+			// p < q, so we have a decision.
+			fmt.Println("less(p, q)  return -1", p, q, k)
+			return true
+		case less(q, p):
+			// p > q, so we have a decision.
+			fmt.Println("less(q, p) return 1 : ", q, p, k)
+			return false
+		}
+		// p == q; try the next comparison.
+	}
+	// All comparisons to here said "equal", so just return whatever
+	// the final comparison reports.
+	return hl.less[k](p, q)
 }
 
 func RandomInUnitSphere(rnd Rnd) Vec3 {
