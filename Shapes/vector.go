@@ -34,6 +34,11 @@ func (v Vec3) GetAxis(a int) float64 {
 	return 0
 }
 
+// Vec3 converts a point to a vector (centered at origin)
+func (v Vec3) Color() Color {
+	return Color{v.X, v.Y, v.Z}
+}
+
 func (v Vec3) Less(u Vec3, i int) bool {
 	return v.GetAxis(i) < u.GetAxis(i)
 }
